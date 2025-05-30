@@ -35,17 +35,21 @@ def initialize_modules(
 
     # 初始化LLM模块
     if init_llm:
-        select_llm_module = config["selected_module"]["LLM"]
-        llm_type = (
-            select_llm_module
-            if "type" not in config["LLM"][select_llm_module]
-            else config["LLM"][select_llm_module]["type"]
-        )
-        modules["llm"] = llm.create_instance(
-            llm_type,
-            config["LLM"][select_llm_module],
-        )
-        logger.bind(tag=TAG).info(f"初始化组件: llm成功 {select_llm_module}")
+        try:
+            select_llm_module = config["selected_module"]["LLM"]
+            llm_type = (
+                select_llm_module
+                if "type" not in config["LLM"][select_llm_module]
+                else config["LLM"][select_llm_module]["type"]
+            )
+            modules["llm"] = llm.create_instance(
+                llm_type,
+                config["LLM"][select_llm_module],
+            )
+            logger.bind(tag=TAG).info(f"初始化组件: llm成功 {select_llm_module}")
+        except Exception as e:
+            logger.bind(tag=TAG).error(f"初始化LLM失败: {e}")
+            modules["llm"] = None
 
     # 初始化Intent模块
     if init_intent:
@@ -63,18 +67,22 @@ def initialize_modules(
 
     # 初始化Memory模块
     if init_memory:
-        select_memory_module = config["selected_module"]["Memory"]
-        memory_type = (
-            select_memory_module
-            if "type" not in config["Memory"][select_memory_module]
-            else config["Memory"][select_memory_module]["type"]
-        )
-        modules["memory"] = memory.create_instance(
-            memory_type,
-            config["Memory"][select_memory_module],
-            config.get("summaryMemory", None),
-        )
-        logger.bind(tag=TAG).info(f"初始化组件: memory成功 {select_memory_module}")
+        try:
+            select_memory_module = config["selected_module"]["Memory"]
+            memory_type = (
+                select_memory_module
+                if "type" not in config["Memory"][select_memory_module]
+                else config["Memory"][select_memory_module]["type"]
+            )
+            modules["memory"] = memory.create_instance(
+                memory_type,
+                config["Memory"][select_memory_module],
+                config.get("summaryMemory", None),
+            )
+            logger.bind(tag=TAG).info(f"初始化组件: memory成功 {select_memory_module}")
+        except Exception as e:
+            logger.bind(tag=TAG).error(f"初始化Memory失败: {e}")
+            modules["memory"] = None
 
     # 初始化VAD模块
     if init_vad:

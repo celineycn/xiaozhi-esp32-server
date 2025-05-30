@@ -112,6 +112,10 @@ class IntentProvider(IntentProviderBase):
                 del self.intent_cache[key]
 
     def replyResult(self, text: str, original_text: str):
+        if self.llm is None:
+            logger.bind(tag=TAG).warning("LLM未初始化，无法生成回复")
+            return "抱歉，语言模型服务暂时不可用。"
+            
         llm_result = self.llm.response_no_stream(
             system_prompt=text,
             user_prompt="请根据以上内容，像人类一样说话的口吻回复用户，要求简洁，请直接返回结果。用户现在说："
@@ -183,6 +187,10 @@ class IntentProvider(IntentProviderBase):
         # 使用LLM进行意图识别
         llm_start_time = time.time()
         logger.bind(tag=TAG).debug(f"开始LLM意图识别调用, 模型: {model_info}")
+
+        if self.llm is None:
+            logger.bind(tag=TAG).error("LLM未初始化，无法进行意图识别")
+            return '{"function_call": {"name": "continue_chat"}}'
 
         intent = self.llm.response_no_stream(
             system_prompt=prompt_music, user_prompt=user_prompt

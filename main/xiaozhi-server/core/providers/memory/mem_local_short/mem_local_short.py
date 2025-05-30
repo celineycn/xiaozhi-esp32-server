@@ -167,6 +167,10 @@ class MemoryProvider(MemoryProviderBase):
         msgStr += f"当前时间：{time_str}"
 
         if self.save_to_file:
+            if self.llm is None:
+                logger.bind(tag=TAG).error("LLM未初始化，无法保存记忆")
+                return None
+                
             result = self.llm.response_no_stream(
                 short_term_memory_prompt,
                 msgStr,
@@ -181,6 +185,10 @@ class MemoryProvider(MemoryProviderBase):
             except Exception as e:
                 print("Error:", e)
         else:
+            if self.llm is None:
+                logger.bind(tag=TAG).error("LLM未初始化，无法保存记忆")
+                return None
+                
             result = self.llm.response_no_stream(
                 short_term_memory_prompt_only_content,
                 msgStr,

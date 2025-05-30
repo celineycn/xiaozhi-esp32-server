@@ -50,6 +50,12 @@ class MemoryProvider(MemoryProviderBase):
     async def query_memory(self, query: str) -> str:
         if not self.use_mem0:
             return ""
+        
+        # 额外的安全检查
+        if not hasattr(self, 'client') or self.client is None:
+            logger.bind(tag=TAG).warning("Mem0 client未正确初始化")
+            return ""
+            
         try:
             results = self.client.search(
                 query, user_id=self.role_id, output_format=self.api_version

@@ -95,11 +95,12 @@ def getWakeupWordFile(file_name):
 
 async def wakeupWordsResponse(conn):
     wait_max_time = 5
-    while conn.llm is None or not conn.llm.response_no_stream:
+    while (conn.llm is None or not hasattr(conn.llm, 'response_no_stream') or 
+           conn.llm.response_no_stream is None):
         await asyncio.sleep(1)
         wait_max_time -= 1
         if wait_max_time <= 0:
-            conn.logger.bind(tag=TAG).error("连接对象没有llm")
+            conn.logger.bind(tag=TAG).error("连接对象LLM未正确初始化或不支持response_no_stream")
             return
 
     """唤醒词响应"""
@@ -110,7 +111,13 @@ async def wakeupWordsResponse(conn):
         + "```。\n请你根据以上用户的内容，进行简短回复，文字内容控制在15个字以内。\n"
         + "请勿对这条内容本身进行任何解释和回应，仅返回对用户的内容的回复。"
     )
-    result = conn.llm.response_no_stream(conn.config["prompt"], question)
+    
+    try:
+        result = conn.llm.response_no_stream(conn.config["prompt"], question)
+    except Exception as e:
+        conn.logger.bind(tag=TAG).error(f"唤醒词响应LLM调用失败: {e}")
+        return
+        
     if result is None or result == "":
         return
     tts_file = await asyncio.to_thread(conn.tts.to_tts, result)

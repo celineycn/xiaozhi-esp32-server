@@ -464,21 +464,45 @@ class ConnectionHandler:
         except Exception as e:
             self.logger.bind(tag=TAG).error(f"初始化组件失败: {e}")
             modules = {}
+        
+        # 更新模块，但对失败的模块给出警告
         if modules.get("tts", None) is not None:
             self.tts = modules["tts"]
+        elif "tts" in modules and modules["tts"] is None:
+            self.logger.bind(tag=TAG).warning("TTS模块初始化失败，将使用默认实例")
+            
         if modules.get("vad", None) is not None:
             self.vad = modules["vad"]
+        elif "vad" in modules and modules["vad"] is None:
+            self.logger.bind(tag=TAG).warning("VAD模块初始化失败，将使用默认实例")
+            
         if modules.get("asr", None) is not None:
             self.asr = modules["asr"]
+        elif "asr" in modules and modules["asr"] is None:
+            self.logger.bind(tag=TAG).warning("ASR模块初始化失败，将使用默认实例")
+            
         if modules.get("llm", None) is not None:
             self.llm = modules["llm"]
+        elif "llm" in modules and modules["llm"] is None:
+            self.logger.bind(tag=TAG).error("LLM模块初始化失败，这会影响对话功能")
+            # 保持原有的LLM实例，不设置为None
+            
         if modules.get("intent", None) is not None:
             self.intent = modules["intent"]
+        elif "intent" in modules and modules["intent"] is None:
+            self.logger.bind(tag=TAG).warning("Intent模块初始化失败，将使用默认实例")
+            
         if modules.get("memory", None) is not None:
             self.memory = modules["memory"]
+        elif "memory" in modules and modules["memory"] is None:
+            self.logger.bind(tag=TAG).warning("Memory模块初始化失败，将使用默认实例")
 
     def _initialize_memory(self):
         """初始化记忆模块"""
+        # 检查主LLM是否存在，如果不存在，使用默认的空记忆处理
+        if self.llm is None:
+            self.logger.bind(tag=TAG).warning("主LLM未初始化，记忆模块可能无法正常工作")
+        
         self.memory.init_memory(
             role_id=self.device_id,
             llm=self.llm,
@@ -514,8 +538,11 @@ class ConnectionHandler:
                 self.memory.set_llm(memory_llm)
             else:
                 # 否则使用主LLM
-                self.memory.set_llm(self.llm)
-                self.logger.bind(tag=TAG).info("使用主LLM作为意图识别模型")
+                if self.llm is not None:
+                    self.memory.set_llm(self.llm)
+                    self.logger.bind(tag=TAG).info("使用主LLM作为记忆总结模型")
+                else:
+                    self.logger.bind(tag=TAG).warning("主LLM未初始化，记忆总结功能可能受限")
 
     def _initialize_intent(self):
         self.intent_type = self.config["Intent"][
@@ -554,8 +581,11 @@ class ConnectionHandler:
                 self.intent.set_llm(intent_llm)
             else:
                 # 否则使用主LLM
-                self.intent.set_llm(self.llm)
-                self.logger.bind(tag=TAG).info("使用主LLM作为意图识别模型")
+                if self.llm is not None:
+                    self.intent.set_llm(self.llm)
+                    self.logger.bind(tag=TAG).info("使用主LLM作为意图识别模型")
+                else:
+                    self.logger.bind(tag=TAG).warning("主LLM未初始化，意图识别功能可能受限")
 
         """加载插件"""
         self.func_handler = FunctionHandler(self)
@@ -574,6 +604,18 @@ class ConnectionHandler:
     def chat(self, query, tool_call=False):
         self.logger.bind(tag=TAG).info(f"大模型收到用户消息: {query}")
         self.llm_finish_task = False
+
+        # 检查LLM是否已初始化
+        if self.llm is None:
+            error_msg = "LLM未正确初始化，无法处理用户消息。请检查LLM配置或mem0记忆服务配置。"
+            self.logger.bind(tag=TAG).error(error_msg)
+            # 尝试发送错误消息给客户端
+            if hasattr(self, 'tts') and self.tts is not None:
+                try:
+                    self.tts.tts_one_sentence(self, ContentType.TEXT, content_detail="抱歉，语言模型服务暂时不可用，请稍后再试。")
+                except Exception as tts_e:
+                    self.logger.bind(tag=TAG).error(f"TTS输出错误消息失败: {tts_e}")
+            return None
 
         if not tool_call:
             self.dialogue.put(Message(role="user", content=query))
@@ -594,10 +636,14 @@ class ConnectionHandler:
             # 使用带记忆的对话
             memory_str = None
             if self.memory is not None:
-                future = asyncio.run_coroutine_threadsafe(
-                    self.memory.query_memory(query), self.loop
-                )
-                memory_str = future.result()
+                try:
+                    future = asyncio.run_coroutine_threadsafe(
+                        self.memory.query_memory(query), self.loop
+                    )
+                    memory_str = future.result()
+                except Exception as memory_e:
+                    self.logger.bind(tag=TAG).error(f"查询记忆失败: {memory_e}")
+                    memory_str = None  # 继续处理，但不使用记忆
 
             uuid_str = str(uuid.uuid4()).replace("-", "")
             self.sentence_id = uuid_str
