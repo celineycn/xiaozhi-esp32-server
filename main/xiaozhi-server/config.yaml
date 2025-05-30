@@ -214,7 +214,7 @@ Memory:
     type: mem0ai
     # https://app.mem0.ai/dashboard/api-keys
     # 每月有1000次免费调用
-    api_key: 你的mem0ai api key
+    api_key: m0-sF9B6OzDyvVzsxK61e4lmyUtCOOWv3eZXz5y1xMI
   nomem:
     # 不想使用记忆功能，可以使用nomem
     type: nomem
@@ -350,7 +350,7 @@ LLM:
     # 可在这里找到你的api key https://bigmodel.cn/usercenter/proj-mgmt/apikeys
     model_name: glm-4-flash
     url: https://open.bigmodel.cn/api/paas/v4/
-    api_key: 你的chat-glm web key
+    api_key: 11462d9bc6394e84b6c5fdc0c6f5ce0d.Diz1YUE53rZHFBRD
   OllamaLLM:
     # 定义LLM API类型
     type: ollama
