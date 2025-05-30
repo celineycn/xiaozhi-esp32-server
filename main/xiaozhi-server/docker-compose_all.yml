@@ -21,7 +21,7 @@ services:
       - TZ=Asia/Shanghai
     volumes:
       # 挂载整个项目目录
-      # - /Users/celine/Documents/github/xiaoning/main/xiaozhi-server:/opt/xiaozhi-esp32-server
+      - ./core:/opt/xiaozhi-esp32-server/core
       # 配置文件目录
       - ./data:/opt/xiaozhi-esp32-server/data
       # 模型文件挂接，很重要
